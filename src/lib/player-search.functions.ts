@@ -81,9 +81,6 @@ export const interpretSearch = createServerFn({ method: "POST" })
     return { query: data.query.trim().slice(0, 300) };
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const { content } = await chatCompletion({
       messages: [
         { role: "system", content: SYSTEM },

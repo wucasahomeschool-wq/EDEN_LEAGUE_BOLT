@@ -18,7 +18,7 @@ function extractJson<T>(content: string): T | null {
   }
 }
 
-async function callGateway(_apiKey: string, system: string, user: string) {
+async function callGateway(system: string, user: string) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -77,9 +77,6 @@ export const generateProspectRatings = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ attributes: ProspectAttributes }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const user = [
       `PROSPECT NAME: ${data.name}`,
       `POSITION: ${data.position}`,
@@ -88,7 +85,7 @@ export const generateProspectRatings = createServerFn({ method: "POST" })
       `Generate the themed attribute spread. JSON object only.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, RATINGS_RULES, user);
+    const content = await callGateway(RATINGS_RULES, user);
     const parsed = extractJson<Record<string, unknown>>(content) ?? {};
     const keys: (keyof ProspectAttributes)[] = [
       "FIN", "SHO", "PAS", "VIS", "DRI", "PAC", "STA", "DEF", "TAC", "POS_attr", "COM", "WR", "AGG", "STR", "AER",
@@ -128,9 +125,6 @@ export const aiDraftPick = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ pick: string }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const user = [
       `YOUR CLUB: ${data.team}`,
       ``,
@@ -142,7 +136,7 @@ export const aiDraftPick = createServerFn({ method: "POST" })
       `Make your selection. JSON only.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, PICK_RULES, user);
+    const content = await callGateway(PICK_RULES, user);
     const parsed = extractJson<{ pick?: string }>(content);
     const pick = parsed?.pick?.trim();
     // Validate against the legal pool; fall back to the highest available if the

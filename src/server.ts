@@ -30,7 +30,31 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  const captured = consumeLastCapturedError();
+  console.error(captured ?? new Error(`h3 swallowed SSR error: ${body}`));
+  const msg = captured instanceof Error ? captured.message : `h3 swallowed SSR error: ${body}`;
+  return new Response(JSON.stringify({ error: msg }), {
+    status: 500,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+// Server function RPCs expect JSON, not HTML. Return a JSON error so the
+// client can parse the message instead of rendering raw HTML.
+function isServerFnRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  const base = process.env.TSS_SERVER_FN_BASE ?? "/_serverFn";
+  return url.pathname.startsWith(base);
+}
+
+function errorResponse(request: Request, error: unknown): Response {
+  const message = error instanceof Error ? error.message : "Internal server error";
+  if (isServerFnRequest(request)) {
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -45,10 +69,7 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return errorResponse(request, error);
     }
   },
 };

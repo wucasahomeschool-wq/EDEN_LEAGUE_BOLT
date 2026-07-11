@@ -54,7 +54,7 @@ function extractJson<T>(content: string): T | null {
   return null;
 }
 
-async function callGateway(_apiKey: string, system: string, user: string, temperature: number) {
+async function callGateway(system: string, user: string, temperature: number) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -98,9 +98,6 @@ export const generateSchedule = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const reqLines = data.specialRequests.length
       ? data.specialRequests
           .map((r) => `  - ${r.home} vs ${r.away}${r.week ? ` (must be in Week ${r.week})` : " (any week)"}`)
@@ -127,7 +124,7 @@ export const generateSchedule = createServerFn({ method: "POST" })
       `Return the full schedule as a JSON array now.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, GEN_SYSTEM, user, 0.7);
+    const content = await callGateway(GEN_SYSTEM, user, 0.7);
     const parsed = extractJson<AiFixture[] | { fixtures?: AiFixture[] }>(content);
     const list = Array.isArray(parsed) ? parsed : parsed?.fixtures;
     if (!Array.isArray(list)) throw new Error("AI returned an unreadable schedule");
@@ -146,9 +143,6 @@ export const fixScheduleWeek = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const cur = data.current.length
       ? data.current.map((m) => `  - ${m.home} vs ${m.away}`).join("\n")
       : "  - (empty)";
@@ -163,7 +157,7 @@ export const fixScheduleWeek = createServerFn({ method: "POST" })
       `Repair it with the fewest possible changes and return ONLY the corrected JSON array.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, FIX_SYSTEM, user, 0.2);
+    const content = await callGateway(FIX_SYSTEM, user, 0.2);
     const parsed = extractJson<{ home: string; away: string }[] | { fixtures?: { home: string; away: string }[] }>(content);
     const list = Array.isArray(parsed) ? parsed : parsed?.fixtures;
     if (!Array.isArray(list)) throw new Error("AI returned an unreadable week");

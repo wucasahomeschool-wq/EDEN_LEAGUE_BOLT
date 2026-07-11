@@ -36,7 +36,7 @@ function extractJsonArray<T>(content: string): T[] | null {
   }
 }
 
-async function callGateway(_apiKey: string, system: string, user: string) {
+async function callGateway(system: string, user: string) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -93,9 +93,6 @@ export const generateAiTradeProposals = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ proposals: AiProposedTerm[] }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const count = Math.min(Math.max(data.count ?? 12, 4), 25);
     const rules = data.allowPicks ? TRADE_RULES_PICKS : TRADE_RULES;
     const user = [
@@ -106,7 +103,7 @@ export const generateAiTradeProposals = createServerFn({ method: "POST" })
       `Propose up to ${count} of the best, most realistic trades right now. JSON array only.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, rules, user);
+    const content = await callGateway(rules, user);
     const raw = extractJsonArray<Record<string, unknown>>(content) ?? [];
 
     const asLabels = (v: unknown): string[] =>

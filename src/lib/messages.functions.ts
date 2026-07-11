@@ -27,7 +27,7 @@ function extractJson<T>(s: string): T | null {
   try { return JSON.parse(s.slice(a, b + 1)) as T; } catch { return null; }
 }
 
-async function callGateway(_apiKey: string, system: string, user: string, temperature = 0.9) {
+async function callGateway(system: string, user: string, temperature = 0.9) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -85,8 +85,6 @@ export const sendDm = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ data }): Promise<{ reply: string; tone: number; userTone: number }> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("AI is not configured");
     const rules = data.kind === "manager" ? MANAGER_DM_RULES : PLAYER_DM_RULES;
     const persona = data.kind === "manager"
       ? `You are ${data.counterpartName}, manager of ${data.counterpartTeam}.\nYOUR PERSONALITY: ${data.counterpartPersonality ?? "Balanced, professional."}`
@@ -116,7 +114,7 @@ export const sendDm = createServerFn({ method: "POST" })
       ``,
       tail,
     ].join("\n");
-    const content = await callGateway(key, persona + "\n" + rules, user);
+    const content = await callGateway(persona + "\n" + rules, user);
     const parsed = extractJson<{ reply?: unknown; tone?: unknown; userTone?: unknown }>(content);
     const reply = parsed && typeof parsed.reply === "string" ? parsed.reply.trim() : content.trim() || "…";
     const tone = clampInt(parsed?.tone, 3);
@@ -160,8 +158,6 @@ export const scoreBroadcast = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ data }): Promise<{ tone: number }> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("AI is not configured");
     const user = [
       `BRIEF (context only):`,
       data.brief,
@@ -171,7 +167,7 @@ export const scoreBroadcast = createServerFn({ method: "POST" })
       ``,
       `Score the squad's reaction. Reply in JSON only.`,
     ].join("\n");
-    const content = await callGateway(key, BROADCAST_RULES, user, 0.3);
+    const content = await callGateway(BROADCAST_RULES, user, 0.3);
     const parsed = extractJson<{ tone?: unknown }>(content);
     return { tone: clampInt(parsed?.tone, 3) };
   });

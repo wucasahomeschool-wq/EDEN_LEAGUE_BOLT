@@ -72,7 +72,7 @@ function extractJson<T>(content: string): T | null {
   }
 }
 
-async function callGateway(_apiKey: string, system: string, user: string) {
+async function callGateway(system: string, user: string) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -144,9 +144,6 @@ export const negotiateTrade = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const counterpart =
       data.userManagerName && data.userManagerName.trim() &&
       data.userManagerName.trim().toUpperCase() !== "USER CONTROLLED"
@@ -184,7 +181,7 @@ export const negotiateTrade = createServerFn({ method: "POST" })
       `Reply now as ${data.managerName}, in JSON only.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, system, user);
+    const content = await callGateway(system, user);
     const parsed = extractJson<{ reply?: string; accepts?: unknown; cancels?: unknown }>(content);
     let reply = parsed && typeof parsed.reply === "string" ? parsed.reply : content;
     // Tolerate the model returning a stringy/numeric truthy value for accepts/cancels.
@@ -267,9 +264,6 @@ export const generateManager = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const taken = new Set(
       (data.takenNames ?? []).map((n) => n.toLowerCase().trim()).filter(Boolean)
     );
@@ -291,7 +285,6 @@ export const generateManager = createServerFn({ method: "POST" })
     // force the deterministic fallback prematurely.
     for (let attempt = 0; attempt < 2; attempt++) {
       const content = await callGateway(
-        apiKey,
         "You are a creative sports-fiction writer.\n" + NEW_MANAGER_RULES,
         attempt === 0
           ? baseUser

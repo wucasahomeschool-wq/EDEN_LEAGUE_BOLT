@@ -44,7 +44,7 @@ function extractJson<T>(content: string): T | null {
   try { return JSON.parse(content.slice(start, end + 1)) as T; } catch { return null; }
 }
 
-async function callGateway(_apiKey: string, system: string, user: string, temperature = 0.9) {
+async function callGateway(system: string, user: string, temperature = 0.9) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -96,9 +96,6 @@ export const negotiateAgent = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const system =
       `You are ${data.agent.name}, the agent representing ${data.playerName} (currently on ${data.team}).\n` +
       `YOUR PERSONALITY: ${data.agent.personality}\n` +
@@ -126,7 +123,7 @@ export const negotiateAgent = createServerFn({ method: "POST" })
       `Reply now as ${data.agent.name}, in JSON only.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, system, user);
+    const content = await callGateway(system, user);
     const parsed = extractJson<{ reply?: string; accepts?: unknown; cancels?: unknown }>(content);
     let reply = parsed && typeof parsed.reply === "string" ? parsed.reply : content;
     const truthy = (v: unknown) => v === true || v === "true" || v === 1;

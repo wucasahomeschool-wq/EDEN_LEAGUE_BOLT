@@ -95,7 +95,7 @@ function extractJsonArray<T>(content: string): T[] | null {
 
 // Two flavors: `structured` parses JSON (skips Groq); `prose` is free-text
 // (the recap) — all four fallback providers participate.
-async function callGateway(_apiKey: string, system: string, user: string, temperature = 0.9, structured = true) {
+async function callGateway(system: string, user: string, temperature = 0.9, structured = true) {
   const { content } = await chatCompletion({
     messages: [
       { role: "system", content: system },
@@ -137,8 +137,6 @@ export const generatePressQuestions = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ questions: string[] }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
     const count = Math.min(Math.max(data.count ?? 4, 3), 5);
     const user = [
       `DATA (the only facts you may use):`,
@@ -148,7 +146,7 @@ export const generatePressQuestions = createServerFn({ method: "POST" })
       `CONTEXT: ${data.context} press conference for ${data.team} (manager: ${data.managerName}).`,
       `Generate exactly ${count} reporter questions. JSON array only.`,
     ].join("\n");
-    const content = await callGateway(apiKey, QUESTIONS_RULES, user, 0.95);
+    const content = await callGateway(QUESTIONS_RULES, user, 0.95);
     const arr = extractJsonArray<string>(content) ?? [];
     const cleaned = arr
       .filter((q): q is string => typeof q === "string" && q.trim().length > 0)
@@ -192,8 +190,6 @@ export const generateNextPressQuestion = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ question: string }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
     const prior = data.priorExchanges.length === 0
       ? "(none — this is the opening question)"
       : data.priorExchanges
@@ -215,7 +211,7 @@ export const generateNextPressQuestion = createServerFn({ method: "POST" })
       ``,
       `Ask the next question. JSON object only.`,
     ].join("\n");
-    const content = await callGateway(apiKey, NEXT_QUESTION_RULES, user, 0.95);
+    const content = await callGateway(NEXT_QUESTION_RULES, user, 0.95);
     const parsed = extractJson<{ question?: unknown }>(content);
     const q = typeof parsed?.question === "string" ? parsed.question.trim() : "";
     if (!q) throw new Error("AI returned no usable question");
@@ -264,9 +260,6 @@ export const scorePressAnswer = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<PressScoreResult> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const teams = data.validTeams.join(", ");
     const managers = data.validManagers
       .map((m) => `${m.name} (${m.team})`)
@@ -293,7 +286,7 @@ export const scorePressAnswer = createServerFn({ method: "POST" })
       `Score the answer. JSON object only.`,
     ].join("\n");
 
-    const content = await callGateway(apiKey, SCORE_RULES, user, 0.6);
+    const content = await callGateway(SCORE_RULES, user, 0.6);
     const parsed = extractJson<{
       targets?: unknown[]; respectDelta?: unknown; harshness?: unknown; summary?: unknown;
     }>(content);
@@ -352,8 +345,6 @@ export const writePressRecap = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ article: string }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
     const user = [
       `BRIEF:`,
       data.brief,
@@ -362,7 +353,7 @@ export const writePressRecap = createServerFn({ method: "POST" })
       `EXCHANGES:`,
       ...data.exchanges.map((e, i) => `Q${i + 1}: ${e.question}\nA${i + 1}: ${e.answer}`),
     ].join("\n");
-    const content = await callGateway(apiKey, RECAP_RULES, user, 0.8, false);
+    const content = await callGateway(RECAP_RULES, user, 0.8, false);
     return { article: content };
   });
 
@@ -426,8 +417,6 @@ export const runAiPressConference = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<AiPressResult> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
     const teams = data.validTeams.join(", ");
     const managers = data.validManagers.map((m) => `${m.name} (${m.team})`).join(", ");
     const players = data.validPlayers.slice(0, 160).map((p) => `${p.name} [${p.team}]`).join(", ");
@@ -446,7 +435,7 @@ export const runAiPressConference = createServerFn({ method: "POST" })
       ``,
       `Generate 1-3 Q&A pairs plus the effects payload. JSON object only.`,
     ].join("\n");
-    const content = await callGateway(apiKey, AI_PRESS_RULES, user, 0.9);
+    const content = await callGateway(AI_PRESS_RULES, user, 0.9);
     const parsed = extractJson<{
       exchanges?: unknown; targets?: unknown[]; respectDelta?: unknown;
       harshness?: unknown; summary?: unknown;

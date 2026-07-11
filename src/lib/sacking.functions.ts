@@ -69,9 +69,6 @@ export const boardroomSackingReview = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }): Promise<{ decisions: SackingDecision[] }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI is not configured");
-
     const dataBlock = data.candidates.map((c) => {
       const pct = ((c.standingsRank / c.totalTeams) * 100).toFixed(0);
       return [
